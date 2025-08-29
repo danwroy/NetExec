@@ -1,10 +1,8 @@
 import sys
-from sqlalchemy import Table, select, func, delete
+
+from sqlalchemy import Table, delete, func, select
 from sqlalchemy.dialects.sqlite import Insert
-from sqlalchemy.exc import (
-    NoInspectionAvailable,
-    NoSuchTableError,
-)
+from sqlalchemy.exc import NoInspectionAvailable, NoSuchTableError
 
 from nxc.database import BaseDB, format_host_query
 from nxc.logger import nxc_logger
@@ -64,10 +62,18 @@ class database(BaseDB):
     def reflect_tables(self):
         with self.db_engine.connect():
             try:
-                self.HostsTable = Table("hosts", self.metadata, autoload_with=self.db_engine)
-                self.UsersTable = Table("users", self.metadata, autoload_with=self.db_engine)
-                self.AdminRelationsTable = Table("admin_relations", self.metadata, autoload_with=self.db_engine)
-                self.LoggedinRelationsTable = Table("loggedin_relations", self.metadata, autoload_with=self.db_engine)
+                self.HostsTable = Table(
+                    "hosts", self.metadata, autoload_with=self.db_engine
+                )
+                self.UsersTable = Table(
+                    "users", self.metadata, autoload_with=self.db_engine
+                )
+                self.AdminRelationsTable = Table(
+                    "admin_relations", self.metadata, autoload_with=self.db_engine
+                )
+                self.LoggedinRelationsTable = Table(
+                    "loggedin_relations", self.metadata, autoload_with=self.db_engine
+                )
             except (NoInspectionAvailable, NoSuchTableError):
                 print(
                     f"""
@@ -83,7 +89,7 @@ class database(BaseDB):
         Check if this host has already been added to the database, if not, add it in.
         TODO: return inserted or updated row ids as a list
         """
-        domain = domain.split(".")[0].upper()
+        # domain = domain.split(".")[0].upper()
         hosts = []
 
         q = select(self.HostsTable).filter(self.HostsTable.c.ip == ip)
@@ -123,7 +129,9 @@ class database(BaseDB):
         # TODO: find a way to abstract this away to a single Upsert call
         q = Insert(self.HostsTable)
         update_columns = {col.name: col for col in q.excluded if col.name not in "id"}
-        q = q.on_conflict_do_update(index_elements=self.HostsTable.primary_key, set_=update_columns)
+        q = q.on_conflict_do_update(
+            index_elements=self.HostsTable.primary_key, set_=update_columns
+        )
         self.db_execute(q, hosts)
 
     def add_credential(self, credtype, domain, username, password, pillaged_from=None):
@@ -181,8 +189,12 @@ class database(BaseDB):
 
         # TODO: find a way to abstract this away to a single Upsert call
         q_users = Insert(self.UsersTable)  # .returning(self.UsersTable.c.id)
-        update_columns_users = {col.name: col for col in q_users.excluded if col.name not in "id"}
-        q_users = q_users.on_conflict_do_update(index_elements=self.UsersTable.primary_key, set_=update_columns_users)
+        update_columns_users = {
+            col.name: col for col in q_users.excluded if col.name not in "id"
+        }
+        q_users = q_users.on_conflict_do_update(
+            index_elements=self.UsersTable.primary_key, set_=update_columns_users
+        )
         self.db_execute(q_users, credentials)  # .scalar()
 
     def remove_credentials(self, creds_id):
@@ -194,7 +206,7 @@ class database(BaseDB):
         self.db_execute(q)
 
     def add_admin_user(self, credtype, domain, username, password, host, user_id=None):
-        domain = domain.split(".")[0]
+        # domain = domain.split(".")[0]
         add_links = []
 
         creds_q = select(self.UsersTable)
@@ -230,9 +242,13 @@ class database(BaseDB):
 
     def get_admin_relations(self, user_id=None, host_id=None):
         if user_id:
-            q = select(self.AdminRelationsTable).filter(self.AdminRelationsTable.c.userid == user_id)
+            q = select(self.AdminRelationsTable).filter(
+                self.AdminRelationsTable.c.userid == user_id
+            )
         elif host_id:
-            q = select(self.AdminRelationsTable).filter(self.AdminRelationsTable.c.hostid == host_id)
+            q = select(self.AdminRelationsTable).filter(
+                self.AdminRelationsTable.c.hostid == host_id
+            )
         else:
             q = select(self.AdminRelationsTable)
 
@@ -267,7 +283,9 @@ class database(BaseDB):
         # if we're filtering by username
         elif filter_term and filter_term != "":
             like_term = func.lower(f"%{filter_term}%")
-            q = select(self.UsersTable).filter(func.lower(self.UsersTable.c.username).like(like_term))
+            q = select(self.UsersTable).filter(
+                func.lower(self.UsersTable.c.username).like(like_term)
+            )
         # otherwise return all credentials
         else:
             q = select(self.UsersTable)
@@ -285,11 +303,15 @@ class database(BaseDB):
         return results.id
 
     def is_credential_local(self, credential_id):
-        q = select(self.UsersTable.c.domain).filter(self.UsersTable.c.id == credential_id)
+        q = select(self.UsersTable.c.domain).filter(
+            self.UsersTable.c.id == credential_id
+        )
         user_domain = self.db_execute(q).all()
 
         if user_domain:
-            q = select(self.HostsTable).filter(func.lower(self.HostsTable.c.id) == func.lower(user_domain))
+            q = select(self.HostsTable).filter(
+                func.lower(self.HostsTable.c.id) == func.lower(user_domain)
+            )
             results = self.db_execute(q).all()
 
             return len(results) > 0
@@ -359,14 +381,18 @@ class database(BaseDB):
             relation = {"userid": user_id, "hostid": host_id}
             try:
                 # TODO: find a way to abstract this away to a single Upsert call
-                q = Insert(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
+                q = Insert(
+                    self.LoggedinRelationsTable
+                )  # .returning(self.LoggedinRelationsTable.c.id)
 
                 self.db_execute(q, [relation])  # .scalar()
             except Exception as e:
                 nxc_logger.debug(f"Error inserting LoggedinRelation: {e}")
 
     def get_loggedin_relations(self, user_id=None, host_id=None):
-        q = select(self.LoggedinRelationsTable)  # .returning(self.LoggedinRelationsTable.c.id)
+        q = select(
+            self.LoggedinRelationsTable
+        )  # .returning(self.LoggedinRelationsTable.c.id)
         if user_id:
             q = q.filter(self.LoggedinRelationsTable.c.userid == user_id)
         if host_id:
