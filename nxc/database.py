@@ -9,9 +9,9 @@ from pathlib import Path
 from sqlite3 import connect
 from threading import Lock
 
-from sqlalchemy import create_engine, MetaData, func
+from sqlalchemy import MetaData, create_engine, func
 from sqlalchemy.exc import IllegalStateChangeError
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 from nxc.loaders.protocolloader import ProtocolLoader
 from nxc.logger import nxc_logger
@@ -19,7 +19,9 @@ from nxc.paths import WORKSPACE_DIR
 
 
 def create_db_engine(db_path):
-    return create_engine(f"sqlite:///{db_path}", isolation_level="AUTOCOMMIT", future=True)
+    return create_engine(
+        f"sqlite:///{db_path}", isolation_level="AUTOCOMMIT", future=True
+    )
 
 
 def open_config(config_path):
@@ -27,7 +29,8 @@ def open_config(config_path):
         config = configparser.ConfigParser()
         config.read(config_path)
     except Exception as e:
-        print(f"[-] Error reading nxc.conf: {e}")
+        # print(f"[-] Error reading nxc.conf: {e}")
+        nxc_logger.display(f"[-] Error reading nxc.conf: {e}")
         sys.exit(1)
     return config
 
@@ -40,7 +43,8 @@ def set_workspace(config_path, workspace_name):
     config = open_config(config_path)
     config.set("nxc", "workspace", workspace_name)
     write_configfile(config, config_path)
-    print(f"[*] Workspace set to {workspace_name}")
+    # print(f"[*] Workspace set to {workspace_name}")
+    nxc_logger.display(f"[*] Workspace set to {workspace_name}")
 
 
 def get_db(config):
@@ -91,9 +95,13 @@ def create_workspace(workspace_name, p_loader=None):
         None
     """
     if exists(path_join(WORKSPACE_DIR, workspace_name)):
-        print(f"[-] Workspace {workspace_name} already exists")
+        # print(f"[-] Workspace {workspace_name} already exists")
+        nxc_logger.display(f"[-] Workspace {workspace_name} already exists")
+
     else:
-        print(f"[*] Creating {workspace_name} workspace")
+        # print(f"[*] Creating {workspace_name} workspace")
+        nxc_logger.display(f"[*] Creating {workspace_name} workspace")
+
         mkdir(path_join(WORKSPACE_DIR, workspace_name))
 
     init_protocol_dbs(workspace_name, p_loader)
@@ -101,7 +109,8 @@ def create_workspace(workspace_name, p_loader=None):
 
 def delete_workspace(workspace_name):
     shutil.rmtree(path_join(WORKSPACE_DIR, workspace_name))
-    print(f"[*] Workspace {workspace_name} deleted")
+    # print(f"[*] Workspace {workspace_name} deleted")
+    nxc_logger.display(f"[*] Workspace {workspace_name} deleted")
 
 
 def initialize_db():
@@ -138,7 +147,14 @@ def format_host_query(q, filter_term, HostsTable):
         like_term = func.lower(f"%{filter_term}%")
 
         # check if the hostname column exists for hostname searching
-        q = q.filter(ip_column.like(like_term) | func.lower(HostsTable.c.hostname).like(like_term)) if hasattr(HostsTable.c, "hostname") else q.filter(ip_column.like(like_term))
+        q = (
+            q.filter(
+                ip_column.like(like_term)
+                | func.lower(HostsTable.c.hostname).like(like_term)
+            )
+            if hasattr(HostsTable.c, "hostname")
+            else q.filter(ip_column.like(like_term))
+        )
 
     return q
 

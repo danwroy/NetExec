@@ -7,27 +7,31 @@ from datetime import datetime
 from pathlib import Path
 
 from shiv.bootstrap import Environment
-
 from shiv.builder import create_archive
 from shiv.cli import __version__ as VERSION
 
+from nxc.logger import nxc_logger
+
 
 def build_nxc():
-    print("Building nxc")
+    # print("Building nxc")
+    nxc_logger.display("Building nxc")
     try:
         shutil.rmtree("bin")
         shutil.rmtree("build")
     except FileNotFoundError:
         pass
     except Exception as e:
-        print(f"Exception while removing bin & build: {e}")
+        # print(f"Exception while removing bin & build: {e}")
+        nxc_logger.display(f"Exception while removing bin & build: {e}")
 
     try:
         os.mkdir("build")
         os.mkdir("bin")
         shutil.copytree("nxc", "build/nxc")
     except Exception as e:
-        print(f"Exception while creating bin and build directories: {e}")
+        # print(f"Exception while creating bin and build directories: {e}")
+        nxc_logger.display(f"Exception while creating bin and build directories: {e}")
         return
 
     subprocess.run(
@@ -47,7 +51,9 @@ def build_nxc():
     [shutil.rmtree(p) for p in Path("build").glob("**/*.dist-info")]
 
     env = Environment(
-        built_at=datetime.utcfromtimestamp(int(time.time())).strftime("%Y-%m-%d %H:%M:%S"),
+        built_at=datetime.utcfromtimestamp(int(time.time())).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
         entry_point="nxc.netexec:main",
         script=None,
         compile_pyc=False,
@@ -65,9 +71,12 @@ def build_nxc():
 
 
 def build_nxcdb():
-    print("building nxcdb")
+    # print("building nxcdb")
+    nxc_logger.display("building nxcdb")
     env = Environment(
-        built_at=datetime.utcfromtimestamp(int(time.time())).strftime("%Y-%m-%d %H:%M:%S"),
+        built_at=datetime.utcfromtimestamp(int(time.time())).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
         entry_point="nxc.nxcdb:main",
         script=None,
         compile_pyc=False,
